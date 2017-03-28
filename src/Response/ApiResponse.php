@@ -2,15 +2,22 @@
 
 namespace BwtTeam\LaravelAPI\Response;
 
+use JsonSerializable;
+use InvalidArgumentException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Contracts\Support\Jsonable;
+use Illuminate\Contracts\Support\Arrayable;
 use BwtTeam\LaravelAPI\Processors\BaseProcessor;
 use BwtTeam\LaravelAPI\Processors\DataProcessor;
 use BwtTeam\LaravelAPI\Processors\MetaProcessor;
-use BwtTeam\LaravelAPI\Processors\OriginalDataProcessor;
 use BwtTeam\LaravelAPI\Processors\StatusProcessor;
-use Symfony\Component\HttpFoundation\JsonResponse as BaseJsonResponse;
+use BwtTeam\LaravelAPI\Processors\OriginalDataProcessor;
 
-class ApiResponse extends BaseJsonResponse
+
+class ApiResponse extends JsonResponse
 {
+    const FIXED_STATUS = 200;
+
     /**
      * Response format.
      *
@@ -43,13 +50,6 @@ class ApiResponse extends BaseJsonResponse
      * @var array
      */
     protected $registeredProcessors = [];
-
-    /**
-     * Data after processing.
-     *
-     * @var string|mixed
-     */
-    protected $processedData = null;
 
     /**
      * Factory method for chainability.
@@ -113,31 +113,9 @@ class ApiResponse extends BaseJsonResponse
      */
     public function setEncodingOptions($encodingOptions)
     {
-        return $this->setJsonOptions($encodingOptions);
-    }
+        $this->encodingOptions = (int)$encodingOptions;
 
-    /**
-     * Get the JSON encoding options.
-     *
-     * @return int
-     */
-    public function getJsonOptions()
-    {
-        return $this->getEncodingOptions();
-    }
-
-    /**
-     * Set the JSON encoding options.
-     *
-     * @param  int $options
-     *
-     * @return mixed
-     */
-    public function setJsonOptions($options)
-    {
-        $this->encodingOptions = (int)$options;
-
-        return $this->setData($this->getData());
+        return $this->setData($this->getOriginalContent());
     }
 
     /**
@@ -145,21 +123,25 @@ class ApiResponse extends BaseJsonResponse
      */
     public function setData($data = [])
     {
-        $this->data = $data;
+        $this->original = $data;
         $this->prepareMessage($data);
-        $this->updateProcessedData();
+        $processedData = $this->prepareData($data);
+
+        if ($processedData instanceof Arrayable) {
+            $this->data = json_encode($processedData->toArray(), $this->encodingOptions);
+        } elseif ($processedData instanceof Jsonable) {
+            $this->data = $processedData->toJson($this->encodingOptions);
+        } elseif ($processedData instanceof JsonSerializable) {
+            $this->data = json_encode($processedData->jsonSerialize(), $this->encodingOptions);
+        } else {
+            $this->data = json_encode($processedData, $this->encodingOptions);
+        }
+
+        if (JSON_ERROR_NONE !== json_last_error()) {
+            throw new InvalidArgumentException(json_last_error_msg());
+        }
 
         return $this->update();
-    }
-
-    /**
-     * Get the data from the response.
-     *
-     * @return mixed
-     */
-    public function getData()
-    {
-        return $this->data;
     }
 
     /**
@@ -172,9 +154,6 @@ class ApiResponse extends BaseJsonResponse
     public function setMessage($message)
     {
         $this->message = $message;
-//        $this->updateProcessedData();
-//
-//        return $this->update();
     }
 
     /**
@@ -219,41 +198,6 @@ class ApiResponse extends BaseJsonResponse
         $statusText = isset(self::$statusTexts[$this->getStatusCode()]) ? self::$statusTexts[$this->getStatusCode()] : 'unknown status';
 
         return snake_case($statusText);
-    }
-
-    /**
-     * Get the processed data from the response.
-     *
-     * @return mixed|string
-     */
-    public function getProcessedData()
-    {
-        return $this->processedData;
-    }
-
-    /**
-     * Updates the processed data
-     *
-     * @return $this
-     */
-    protected function updateProcessedData()
-    {
-        $data = $this->getData();
-        $this->processedData = $this->prepareData($data);
-
-        return $this;
-    }
-
-    /**
-     * Sets the JSONP callback.
-     *
-     * @param  string|null $callback
-     *
-     * @return $this
-     */
-    public function withCallback($callback = null)
-    {
-        return $this->setCallback($callback);
     }
 
     /**
@@ -302,9 +246,9 @@ class ApiResponse extends BaseJsonResponse
      *
      * @return mixed
      */
-    public function resolveProcessorClass($processor)
+    protected function resolveProcessorClass($processor)
     {
-        return new $processor($this);
+        return new $processor($this, app('config')->get('api'));
     }
 
     /**
@@ -314,7 +258,7 @@ class ApiResponse extends BaseJsonResponse
      *
      * @return BaseProcessor
      */
-    public function getProcessor($processor)
+    protected function getProcessor($processor)
     {
         $name = is_string($processor) ? $processor : get_class($processor);
 
@@ -334,7 +278,7 @@ class ApiResponse extends BaseJsonResponse
      *
      * @return mixed
      */
-    public function prepareData($data)
+    protected function prepareData($data)
     {
         $processedData = [];
         $format = $this->getFormat();
@@ -385,7 +329,7 @@ class ApiResponse extends BaseJsonResponse
      *
      * @return mixed
      */
-    public function applyProcessor($signature, $data)
+    protected function applyProcessor($signature, $data)
     {
         $processedData = $signature;
         if (array_key_exists($signature, $this->registeredProcessors)) {
@@ -399,35 +343,53 @@ class ApiResponse extends BaseJsonResponse
     }
 
     /**
-     * Updates the content and headers according to the JSON data and callback.
+     * Sends HTTP headers.
      *
      * @return $this
      */
-    protected function update()
+    public function sendHeaders()
     {
-        $data = json_encode($this->getProcessedData(), $this->encodingOptions);
+        if ($this->isFixedStatusCode()) {
+            $tmpStatusCode = $this->statusCode;
+            $tmpStatusText = $this->statusText;
 
-        if (JSON_ERROR_NONE !== json_last_error()) {
-            throw new \InvalidArgumentException(json_last_error_msg());
+            $this->statusCode = self::FIXED_STATUS;
+            $this->statusText = self::$statusTexts[self::FIXED_STATUS];
+
+            parent::sendHeaders();
+
+            $this->statusCode = $tmpStatusCode;
+            $this->statusText = $tmpStatusText;
+        } else {
+            parent::sendHeaders();
         }
-
-        if (null !== $this->callback) {
-            // Not using application/javascript for compatibility reasons with older browsers.
-            $this->headers->set('Content-Type', 'text/javascript');
-
-            $this->setContent(sprintf('/**/%s(%s);', $this->callback, $data));
-
-            return $this;
-        }
-
-        // Only set the header when there is none or when it equals 'text/javascript' (from a previous update with callback)
-        // in order to not overwrite a custom definition.
-        if (!$this->headers->has('Content-Type') || 'text/javascript' === $this->headers->get('Content-Type')) {
-            $this->headers->set('Content-Type', 'application/json');
-        }
-
-        $this->setContent($data);
 
         return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isFixedStatusCode()
+    {
+        $config = app('config')->get('api');
+        $always = array_get($config, 'status_code.fixed.always', false);
+        $byHeader = array_get($config, 'status_code.fixed.header', false) && \Request::header(array_get($config, 'status_code.fixed.header', false));
+        $byGetParam = array_get($config, 'status_code.fixed.get_param', false) && \Request::get(array_get($config, 'status_code.fixed.get_param', false));
+
+        return $always || $byHeader || $byGetParam;
+    }
+
+    /**
+     * @param $debugData
+     *
+     * @return $this
+     */
+    public function setDebugData($debugData)
+    {
+        $data = array_merge($this->getData(true), ['debug' => $debugData]);
+        $this->data = json_encode($data, $this->encodingOptions);
+
+        return $this->update();
     }
 }

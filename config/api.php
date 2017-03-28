@@ -29,5 +29,21 @@ return [
     */
     'messages' => [
         'fixed' => true
+    ],
+
+    /*
+   |--------------------------------------------------------------------------
+   |Sets up settings of response status code
+   |--------------------------------------------------------------------------
+   */
+    'status_code' => [
+        /*
+        | This option is responsible for always sending fixed code of response status  (200 ОК).
+        */
+        'fixed' => [
+            'always' => false, // Always return 200 OK
+            'header' => 'Fixed-Status-Code', // Header to check necessity of this function
+            'get_param' => 'fixed_sc' // Get parameter to check necessity of this function
+        ]
     ]
 ];

@@ -13,6 +13,13 @@ abstract class BaseProcessor
     protected $data = null;
 
     /**
+     * Array of config.
+     *
+     * @var array
+     */
+    protected $config = [];
+
+    /**
      * The response instance.
      *
      * @var \BwtTeam\LaravelAPI\Response\ApiResponse
@@ -23,12 +30,14 @@ abstract class BaseProcessor
      * Create a new processor instance.
      *
      * @param  \BwtTeam\LaravelAPI\Response\ApiResponse $response
+     * @param array $config
      *
      * @return void
      */
-    public function __construct(&$response)
+    public function __construct(&$response, array $config = [])
     {
         $this->response = $response;
+        $this->config = $config;
     }
 
     /**

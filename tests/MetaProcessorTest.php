@@ -2,8 +2,9 @@
 
 use BwtTeam\LaravelAPI\Processors\MetaProcessor;
 use BwtTeam\LaravelAPI\Response\ApiResponse;
+use Tests\TestCase;
 
-class MetaProcessorTest extends \TestCase
+class MetaProcessorTest extends TestCase
 {
     /** @var Symfony\Component\HttpFoundation\JsonResponse */
     protected $response;

@@ -2,8 +2,9 @@
 
 use BwtTeam\LaravelAPI\Processors\DataProcessor;
 use BwtTeam\LaravelAPI\Response\ApiResponse;
+use Tests\TestCase;
 
-class DataProcessorTest extends \TestCase
+class DataProcessorTest extends TestCase
 {
     /** @var Symfony\Component\HttpFoundation\JsonResponse */
     protected $response;

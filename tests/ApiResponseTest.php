@@ -4,8 +4,9 @@ use BwtTeam\LaravelAPI\Processors\DataProcessor;
 use BwtTeam\LaravelAPI\Processors\MetaProcessor;
 use BwtTeam\LaravelAPI\Processors\StatusProcessor;
 use BwtTeam\LaravelAPI\Response\ApiResponse;
+use Tests\TestCase;
 
-class ApiResponseTest extends \TestCase
+class ApiResponseTest extends TestCase
 {
     /** @var array|string */
     protected $format = [];

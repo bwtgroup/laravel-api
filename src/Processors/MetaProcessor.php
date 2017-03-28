@@ -43,7 +43,6 @@ class MetaProcessor extends BaseProcessor
             }
         }
 
-
         $this->setData($processedData);
     }
 

@@ -60,6 +60,12 @@ php artisan vendor:publish --provider="BwtTeam\LaravelAPI\Providers\ApiServicePr
 class Handler extends \BwtTeam\LaravelAPI\Exceptions\Handler
 ```
 
+и в классе `App\Http\Kernel` изменить родительский класса на `\BwtTeam\LaravelAPI\Http\Kernel`
+
+```php
+class Handler Kernel \BwtTeam\LaravelAPI\Http\Kernel
+```
+
 А к конкретному пути (или ко всему приложению) необходимо подключить middleware `\BwtTeam\LaravelAPI\Middleware\Api`, чтоб данный путь обрабатывался как метод API.
 
 Если для валидации вы используете экземпляры классов `App\Http\Requests`, то вам необходимо наследоваться не от `Illuminate\Foundation\Http\FormRequest`, а от `BwtTeam\LaravelAPI\Requests\ApiRequest`.

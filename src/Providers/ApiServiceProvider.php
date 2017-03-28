@@ -2,6 +2,7 @@
 
 namespace BwtTeam\LaravelAPI\Providers;
 
+use BwtTeam\LaravelAPI\Debugger;
 use BwtTeam\LaravelAPI\Response\ApiResponse;
 use Illuminate\Support\ServiceProvider;
 
@@ -16,6 +17,12 @@ class ApiServiceProvider extends ServiceProvider
     {
         $this->setupConfig();
 
+        // Enable debugger when debug = true
+        if ($this->app['config']['app.debug'])
+        {
+            $this->app->make(Debugger::class)->collectDatabaseQueries();
+        }
+
         if(!$this->isLumen()) {
             $this->app->make('Illuminate\Contracts\Routing\ResponseFactory')->macro('api', [ApiResponse::class, 'create']);
         }
@@ -28,7 +35,7 @@ class ApiServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        $this->app->singleton(Debugger::class);
     }
 
     /**
@@ -56,5 +63,17 @@ class ApiServiceProvider extends ServiceProvider
     protected function isLumen()
     {
         return is_a(\app(), 'Laravel\Lumen\Application');
+    }
+
+    /**
+     * Get the services provided by the provider.
+     *
+     * @return array
+     */
+    public function provides()
+    {
+        return [
+            Debugger::class
+        ];
     }
 }

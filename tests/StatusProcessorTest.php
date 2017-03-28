@@ -2,8 +2,9 @@
 
 use BwtTeam\LaravelAPI\Processors\StatusProcessor;
 use BwtTeam\LaravelAPI\Response\ApiResponse;
+use Tests\TestCase;
 
-class StatusProcessorTest  extends \TestCase
+class StatusProcessorTest  extends TestCase
 {
     /** @var Symfony\Component\HttpFoundation\JsonResponse */
     protected $response;

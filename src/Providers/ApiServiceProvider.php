@@ -24,7 +24,9 @@ class ApiServiceProvider extends ServiceProvider
         }
 
         if(!$this->isLumen()) {
-            $this->app->make('Illuminate\Contracts\Routing\ResponseFactory')->macro('api', [ApiResponse::class, 'create']);
+            $this->app->make('Illuminate\Contracts\Routing\ResponseFactory')->macro('api', function() {
+                return call_user_func_array([ApiResponse::class, 'create'], func_get_args());
+            });
         }
     }
 
